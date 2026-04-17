@@ -1,0 +1,37 @@
+# Data files — never commit these (proprietary, large, or sensitive)
+*.dta
+*.csv
+*.txt
+*.xlsx
+*.xls
+
+# Except example files
+!examples/*.csv
+
+# API keys and secrets
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Stata
+*.smcl
+*.log
+*.ster
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Jupyter
+.ipynb_checkpoints/

@@ -1,0 +1,3 @@
+Classifies whether two company names refer to the same firm using Gemini and GPT-4. Handles subsidiaries, abbreviations, rebrands, and multilingual names. Processes millions of pairs in batch.
+
+Topics to add on GitHub: python, llm, gemini, gpt4, company-matching, entity-resolution, nlp, named-entity-recognition
