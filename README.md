@@ -1,4 +1,4 @@
-# Sebastian Velasquez — Research Code
+# Research Code - IDB Match Orbis - DNB database
 
 Code from my work at the Inter-American Development Bank. The focus is on foreign direct investment in Latin America — specifically, building the data infrastructure to study it.
 
