@@ -27,8 +27,8 @@
 *
 *  Dependencies:
 *    - 00_config.do
-*    - fuzzy_matched_v1_order.dta   (from Python fuzzy matching)
-*    - Orbis_DNBformat_for_match.dta (from 01_build_orbis.do)
+*    - fuzzy_matched_v2_order.dta  (from Python fuzzy matching, saved by Step A)
+*    - Orbis_DNBformat_v3.dta      (from 01_build_orbis.do)
 *
 *  Author:  Sebastian Velasquez (IADB)
 *  Updated: 2025
@@ -159,21 +159,21 @@ replace gobalultimateyearstarted=1999 if gobalultimateyearstarted==.
 * --- Step D: Extract NAICS codes ---
 * DNB stores the full 6-digit NAICS code. We truncate to 2-digit and 4-digit
 * for sector-level analysis.
-* _c = subsidiary country (countryname)
-* _h = home/HQ country (globalultimate...)
+* _c = subsidiary/company (primary6digitnaicscode)
+* _h = global ultimate parent / HQ (globalultimateprimarynaicsco)
 
 tostring globalultimateprimarynaicsco, replace
 tostring primary6digitnaicscode, replace
 
-gen naics_2_c=substr(globalultimateprimarynaicsco,1,2)
-gen naics_2_h=substr(primary6digitnaicscode,1,2)
+gen naics_2_c=substr(primary6digitnaicscode,1,2)
+gen naics_2_h=substr(globalultimateprimarynaicsco,1,2)
 
 * Replace missing values with 99 (unclassified)
 replace naics_2_c="99" if naics_2_c=="."
 replace naics_2_h="99" if naics_2_h=="."
 
-gen naics_4_c=substr(globalultimateprimarynaicsco,1,4)
-gen naics_4_h=substr(primary6digitnaicscode,1,4)
+gen naics_4_c=substr(primary6digitnaicscode,1,4)
+gen naics_4_h=substr(globalultimateprimarynaicsco,1,4)
 
 replace naics_4_c="9999" if naics_4_c=="."
 replace naics_4_h="9999" if naics_4_h=="."
@@ -220,38 +220,38 @@ replace iso2_aff = "VC" if countryname == "ST VINCENT"
 drop iso3n
 
 * Repeat for the parent country (globalultimatecountry → iso3_par, iso2_par)
-kountry countryname, from(other) stuck
+kountry globalultimatecountry, from(other) stuck
 rename _ISO3N_ iso3n
 kountry iso3n, from(iso3n) to(iso3c)
 rename _ISO3C_ iso3_par
 kountry iso3n, from(iso3n) to(iso2c)
 rename _ISO2C_ iso2_par
 
-replace iso3_par="BES" if countryname=="BONAIRE ST EUST SABA"
-replace iso3_par="CAF" if countryname=="CENTRAL AFRICAN REP"
-replace iso3_par="COD" if countryname=="CONGO DEMOCRATIC REP"
-replace iso3_par="CUW" if countryname=="CURACAO"
-replace iso3_par="SWZ" if countryname=="ESWATINI"
-replace iso3_par="KSV" if countryname=="KOSOVO"
-replace iso3_par="FSM" if countryname=="MICRONESIA FED ST"
-replace iso3_par="MKD" if countryname=="NORTH MACEDONIA"
-replace iso3_par="NFK" if countryname=="NORFOLK ISLAND"
-replace iso3_par="MNP" if countryname=="NORTHERN MARIANA IS"
-replace iso3_par="SXM" if countryname=="ST MAARTEN"
-replace iso3_par="VCT" if countryname=="ST VINCENT"
+replace iso3_par="BES" if globalultimatecountry=="BONAIRE ST EUST SABA"
+replace iso3_par="CAF" if globalultimatecountry=="CENTRAL AFRICAN REP"
+replace iso3_par="COD" if globalultimatecountry=="CONGO DEMOCRATIC REP"
+replace iso3_par="CUW" if globalultimatecountry=="CURACAO"
+replace iso3_par="SWZ" if globalultimatecountry=="ESWATINI"
+replace iso3_par="KSV" if globalultimatecountry=="KOSOVO"
+replace iso3_par="FSM" if globalultimatecountry=="MICRONESIA FED ST"
+replace iso3_par="MKD" if globalultimatecountry=="NORTH MACEDONIA"
+replace iso3_par="NFK" if globalultimatecountry=="NORFOLK ISLAND"
+replace iso3_par="MNP" if globalultimatecountry=="NORTHERN MARIANA IS"
+replace iso3_par="SXM" if globalultimatecountry=="ST MAARTEN"
+replace iso3_par="VCT" if globalultimatecountry=="ST VINCENT"
 
-replace iso2_par = "BQ" if countryname == "BONAIRE ST EUST SABA"
-replace iso2_par = "CF" if countryname == "CENTRAL AFRICAN REP"
-replace iso2_par = "CD" if countryname == "CONGO DEMOCRATIC REP"
-replace iso2_par = "CW" if countryname == "CURACAO"
-replace iso2_par = "SZ" if countryname == "ESWATINI"
-replace iso2_par = "XK" if countryname == "KOSOVO"
-replace iso2_par = "FM" if countryname == "MICRONESIA FED ST"
-replace iso2_par = "MK" if countryname == "NORTH MACEDONIA"
-replace iso2_par = "NF" if countryname == "NORFOLK ISLAND"
-replace iso2_par = "MP" if countryname == "NORTHERN MARIANA IS"
-replace iso2_par = "SX" if countryname == "ST MAARTEN"
-replace iso2_par = "VC" if countryname == "ST VINCENT"
+replace iso2_par = "BQ" if globalultimatecountry == "BONAIRE ST EUST SABA"
+replace iso2_par = "CF" if globalultimatecountry == "CENTRAL AFRICAN REP"
+replace iso2_par = "CD" if globalultimatecountry == "CONGO DEMOCRATIC REP"
+replace iso2_par = "CW" if globalultimatecountry == "CURACAO"
+replace iso2_par = "SZ" if globalultimatecountry == "ESWATINI"
+replace iso2_par = "XK" if globalultimatecountry == "KOSOVO"
+replace iso2_par = "FM" if globalultimatecountry == "MICRONESIA FED ST"
+replace iso2_par = "MK" if globalultimatecountry == "NORTH MACEDONIA"
+replace iso2_par = "NF" if globalultimatecountry == "NORFOLK ISLAND"
+replace iso2_par = "MP" if globalultimatecountry == "NORTHERN MARIANA IS"
+replace iso2_par = "SX" if globalultimatecountry == "ST MAARTEN"
+replace iso2_par = "VC" if globalultimatecountry == "ST VINCENT"
 
 drop iso3n
 
@@ -261,7 +261,7 @@ drop iso3n
 * We first merge DNB on the DNB company name (m:1 because one DNB name can have
 * multiple rows), then rename the matched Orbis name and merge again on Orbis.
 
-merge m:1 companyname using "$fuzzy_dir/fuzzy_matched_v1_order.dta"
+merge m:1 companyname using "$fuzzy_dir/fuzzy_matched_v2_order.dta"
 
 drop if _merge==2
 
@@ -271,7 +271,9 @@ rename _merge _merge_1
 rename matched_name name_aff
 
 * Merge with the Orbis ownership data on the Orbis affiliate name
-merge m:1 name_aff using "$root/Orbis_DNBformat_for_match.dta"
+merge m:1 name_aff using "$root/Orbis_DNBformat_v3.dta"
+drop if _merge==2
+drop _merge
 
 * Extract 4-digit NAICS from Orbis 6-digit codes
 gen naics_aff_4=substr(naics_aff_6,1,4)
@@ -297,10 +299,10 @@ replace parent_name=name_par if parent_name==""
 gen parent_country=iso2_par
 replace parent_country=iso2_parent if parent_country==""
 
-gen company_naics_4=naics_4_h if _merge_1==1 | _merge_1==3
+gen company_naics_4=naics_4_c if _merge_1==1 | _merge_1==3
 replace company_naics_4=naics_aff_4 if company_naics_4==""
 
-gen parent_naics_4=naics_4_c if _merge_1==1 | _merge_1==3
+gen parent_naics_4=naics_4_h if _merge_1==1 | _merge_1==3
 replace parent_naics_4=naics_par_4 if parent_naics_4==""
 
 gen company_yearstarted=yearstarted if _merge_1==1 | _merge_1==3

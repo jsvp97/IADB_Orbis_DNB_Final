@@ -17,7 +17,7 @@
 *   - The AI review here includes a third question (Q3: ranking) to resolve
 *     cases where multiple Orbis parents match the same DNB parent name.
 *     We keep the one with the highest Q3 ranking score.
-*   - Confidence threshold is slightly higher (-0.75 instead of -0.75) because
+*   - Confidence threshold is the same as the affiliate match (-0.75) because
 *     parent-level precision matters more for ownership attribution.
 *
 *  Match criteria used here:
@@ -38,7 +38,7 @@
 *
 ********************************************************************************
 
-do stata/00_config.do
+do "stata/00_config.do"
 
 
 ********************************************************************************
@@ -83,7 +83,10 @@ import delimited "$fuzzy_dir/fuzzy_match_par_v1_final.csv", clear
 drop original_name
 drop conf
 
-export delimited using "$ia_dir/fuzzy_match_par_v1_preIA.csv"
+* Rename DNB column to name_par for consistency with the AI review scripts
+rename DNB_name_1 name_par
+
+export delimited using "$ia_dir/fuzzy_match_par_v1_preIA.csv", replace
 
 * Create chunk ID (100,000 rows per chunk)
 gen long chunk_id = ceil(_n / 100000)
@@ -132,7 +135,11 @@ save "$ia_agent/fuzzy_match_par_v1_postIA.dta", replace
 * === STEP 4: MERGE AI RESULTS WITH FUZZY SCORES ===
 ********************************************************************************
 
-import delimited "$ia_dir/fuzzy_match_par_v1.csv", clear
+* Python saves to fuzzy_dir with the _final suffix
+import delimited "$fuzzy_dir/fuzzy_match_par_v1_final.csv", clear
+
+* Rename DNB column to align with the postIA files
+rename DNB_name_1 name_par
 
 gen name_par_ = name_par
 gen matched_name_ = matched_name
@@ -182,12 +189,32 @@ keep if ent_name_par != ""
 
 duplicates drop name_par, force
 
-merge 1:1 name_par using "$ia_agent/fuzzy_match_par_postIA_final_match1.dta"
+* name_par here is the Orbis BvD parent display name.
+* In the postIA file, matched_name = Orbis parent name (same thing).
+* Rename before the merge so both sides use the same key variable.
+rename name_par matched_name
+
+merge 1:1 matched_name using "$ia_agent/fuzzy_match_par_postIA_final_match1.dta"
 drop if _merge == 2
 drop _merge
 
-* Attach DNB parent variables
-merge m:1 matched_name using "$ia_dir/DNB_2025_match_unique.dta"
+* Restore original name for clarity; name_par (DNB) now comes from postIA file
+rename matched_name name_par_orbis
+
+* Attach DNB parent attributes — DNB_2025_match_unique is keyed on companyname
+* (one row per subsidiary), so deduplicate on globalultimatebusinessname first.
+rename name_par globalultimatebusinessname
+
+tempfile dnb_parents
+preserve
+use "$ia_dir/DNB_2025_match_unique.dta", clear
+duplicates drop globalultimatebusinessname, force
+save `dnb_parents'
+restore
+
+merge m:1 globalultimatebusinessname using `dnb_parents', keepusing(naics_2_h naics_4_h iso2_parent iso3_parent gobalultimateyearstarted globalultimatedunsnumber)
+drop if _merge == 2
+drop _merge
 
 save "$root/Merge_DNB_Orbis_par_PostIA_v2.dta", replace
 

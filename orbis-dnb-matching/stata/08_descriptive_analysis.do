@@ -35,7 +35,7 @@
 *
 ********************************************************************************
 
-do stata/00_config.do
+do "stata/00_config.do"
 cap mkdir "$root/Analysis"
 
 
@@ -99,12 +99,6 @@ replace sector_cat = "H" if ussic2 >= 60 & ussic2 <= 67
 replace sector_cat = "I" if ussic2 >= 70 & ussic2 <= 89
 replace sector_cat = "J" if ussic2 >= 91 & ussic2 <= 99
 replace sector_cat = "Z" if sector_cat == ""    // unclassified
-
-label define sector_lbl ///
-    1 "Agriculture (A)" 2 "Mining (B)" 3 "Construction (C)" ///
-    4 "Manufacturing (D)" 5 "Transport/Utilities (E)" ///
-    6 "Wholesale (F)" 7 "Retail (G)" 8 "Finance/Real Estate (H)" ///
-    9 "Services (I)" 10 "Public Admin (J)" 11 "Unclassified (Z)"
 
 
 ********************************************************************************

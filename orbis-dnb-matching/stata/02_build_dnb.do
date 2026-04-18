@@ -106,16 +106,17 @@ replace gobalultimateyearstarted = 1999 if gobalultimateyearstarted == .
 
 * ==============================================================================
 * PART 3 — NAICS CODES
-* _c = subsidiary (company country), _h = parent (HQ country)
+* _c = subsidiary/company (primary6digitnaicscode)
+* _h = global ultimate parent / HQ (globalultimateprimarynaicsco)
 * ==============================================================================
 
 tostring globalultimateprimarynaicsco, replace
 tostring primary6digitnaicscode, replace
 
-gen naics_2_c = substr(globalultimateprimarynaicsco, 1, 2)
-gen naics_2_h = substr(primary6digitnaicscode, 1, 2)
-gen naics_4_c = substr(globalultimateprimarynaicsco, 1, 4)
-gen naics_4_h = substr(primary6digitnaicscode, 1, 4)
+gen naics_2_c = substr(primary6digitnaicscode, 1, 2)
+gen naics_2_h = substr(globalultimateprimarynaicsco, 1, 2)
+gen naics_4_c = substr(primary6digitnaicscode, 1, 4)
+gen naics_4_h = substr(globalultimateprimarynaicsco, 1, 4)
 
 replace naics_2_c = "99"   if naics_2_c == "."
 replace naics_2_h = "99"   if naics_2_h == "."

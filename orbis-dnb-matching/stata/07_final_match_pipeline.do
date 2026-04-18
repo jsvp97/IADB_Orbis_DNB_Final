@@ -117,7 +117,11 @@ save "$ia_agent/fuzzy_match_v1_postIA.dta", replace
 * STEP 6 — Merge AI results back onto the full fuzzy match file
 * ==============================================================================
 
-import delimited "$ia_dir/fuzzy_match_v1.csv", clear
+* Python saves to fuzzy_dir with the _final suffix
+import delimited "$fuzzy_dir/fuzzy_match_v1_final.csv", clear
+
+* Rename DNB column to name_aff to match the postIA files
+rename companyname name_aff
 
 gen name_aff_    = name_aff
 gen matched_name_ = matched_name
@@ -181,14 +185,24 @@ keep if ent_name_par != ""
 
 duplicates drop name_aff, force
 
+* name_aff here is the Orbis BvD affiliate display name.
+* In the postIA file, matched_name = Orbis affiliate name (same thing).
+* Rename before the merge so both sides use the same key variable.
+rename name_aff matched_name
+
 * Attach fuzzy+AI match flag
-merge 1:1 name_aff using "$ia_agent/fuzzy_match_v1_postIA_final_match1.dta"
+merge 1:1 matched_name using "$ia_agent/fuzzy_match_v1_postIA_final_match1.dta"
 
 drop if _merge==2
 drop _merge
 
-* Attach DNB variables via matched_name (the Orbis name that maps to a DNB firm)
-merge m:1 matched_name using "$ia_dir/DNB_2025_match_unique.dta"
+* Attach DNB variables via name_aff (the DNB company name from the postIA file)
+rename name_aff companyname
+merge m:1 companyname using "$ia_dir/DNB_2025_match_unique.dta"
+drop if _merge==2
+
+* Restore name_aff for downstream consistency
+rename companyname name_aff
 
 save "$ia_dir/Merge_DNB_Orbis_PostIA_v1.dta", replace
 
@@ -224,13 +238,13 @@ replace naics_par_2="31" if naics_par_2=="33"
 replace naics_par_2="44" if naics_par_2=="45"
 replace naics_par_2="48" if naics_par_2=="49"
 
-* Consolidate NAICS — subsidiary (DNB)
+* Consolidate NAICS — subsidiary/company (DNB, naics_2_c)
 replace naics_2_c="31" if naics_2_c=="32"
 replace naics_2_c="31" if naics_2_c=="33"
 replace naics_2_c="44" if naics_2_c=="45"
 replace naics_2_c="48" if naics_2_c=="49"
 
-* Consolidate NAICS — parent HQ (DNB)
+* Consolidate NAICS — global ultimate parent / HQ (DNB, naics_2_h)
 replace naics_2_h="31" if naics_2_h=="32"
 replace naics_2_h="31" if naics_2_h=="33"
 replace naics_2_h="44" if naics_2_h=="45"

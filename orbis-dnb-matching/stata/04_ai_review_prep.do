@@ -6,8 +6,8 @@
 * is short enough to finish without hitting API time limits, and any
 * failed chunk can be re-run without redoing everything.
 *
-* Input:   $ia_dir/fuzzy_match_v1.csv       (from 01_fuzzy_match_affiliates.py)
-* Outputs: $ia_dir/fuzzy_match_v1_preIA_*.csv  (one file per chunk)
+* Input:   $fuzzy_dir/fuzzy_match_v1_final.csv  (from 01_fuzzy_match_affiliates.py)
+* Outputs: $ia_dir/fuzzy_match_v1_preIA_*.csv   (one file per chunk)
 *
 * Next: run python/ai_review/03_gemini_batch_cooldown.py on each chunk.
 *
@@ -17,7 +17,8 @@
 
 do "stata/00_config.do"
 
-import delimited "$ia_dir/fuzzy_match_v1.csv", clear
+* Python saves to fuzzy_dir with the _final suffix
+import delimited "$fuzzy_dir/fuzzy_match_v1_final.csv", clear
 
 * The AI review only needs the two company names — drop everything else
 rename companyname name_aff

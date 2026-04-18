@@ -46,10 +46,12 @@ save "$root/Orbis_links.dta", replace
 * PART 2 — ENTITY NAMES AND TYPES
 * ==============================================================================
 
+* NOTE: verify the exact column name for year of incorporation in your
+* Entities.txt file. BvD bulk deliveries commonly use "year_incorp".
 chunky using "$orbis_raw/Entities.txt", ///
     chunksize(8000000) ///
     do({
-        keep entity_id name_internat entity_type iso2_country
+        keep entity_id name_internat entity_type iso2_country year_incorp
         save "$root/entities_chunk_`chunknum'.dta", replace
     })
 
@@ -124,45 +126,51 @@ save "$root/Orbis_identifiers.dta", replace
 
 use "$root/Orbis_links.dta", clear
 
-* Affiliate
-rename entity_id bvdid_aff
-merge m:1 bvdid_aff using "$root/Orbis_entities.dta", keepusing(ent_name ent_type iso2)
+* Affiliate — merge on entity_id before renaming to bvdid_aff
+merge m:1 entity_id using "$root/Orbis_entities.dta", keepusing(ent_name ent_type iso2 year_incorp)
 drop if _merge==2
 drop _merge
 rename ent_name ent_name_aff
 rename ent_type ent_type_aff
 rename iso2     iso2_aff
 
-merge m:1 bvdid_aff using "$root/Orbis_industry.dta", keepusing(naics_6 ussic_6)
+merge m:1 entity_id using "$root/Orbis_industry.dta", keepusing(naics_6 ussic_6)
 drop if _merge==2
 drop _merge
 rename naics_6 naics_aff_6
 rename ussic_6 ussic_aff_6
 
-merge m:1 bvdid_aff using "$root/Orbis_identifiers.dta", keepusing(bvd_name)
+merge m:1 entity_id using "$root/Orbis_identifiers.dta", keepusing(bvd_name)
 drop if _merge==2
 drop _merge
 rename bvd_name name_aff
 
-* Parent
-rename linked_entity_id bvdid_par
-merge m:1 bvdid_par using "$root/Orbis_entities.dta", keepusing(ent_name ent_type iso2)
+rename entity_id bvdid_aff
+rename year_incorp year_incorp_aff
+
+* Parent — standardize to entity_id for merges before renaming to bvdid_par
+rename linked_entity_id entity_id
+
+merge m:1 entity_id using "$root/Orbis_entities.dta", keepusing(ent_name ent_type iso2 year_incorp)
 drop if _merge==2
 drop _merge
 rename ent_name ent_name_par
 rename ent_type ent_type_par
 rename iso2     iso2_par
 
-merge m:1 bvdid_par using "$root/Orbis_industry.dta", keepusing(naics_6 ussic_6)
+merge m:1 entity_id using "$root/Orbis_industry.dta", keepusing(naics_6 ussic_6)
 drop if _merge==2
 drop _merge
 rename naics_6 naics_par_6
 rename ussic_6 ussic_par_6
 
-merge m:1 bvdid_par using "$root/Orbis_identifiers.dta", keepusing(bvd_name)
+merge m:1 entity_id using "$root/Orbis_identifiers.dta", keepusing(bvd_name)
 drop if _merge==2
 drop _merge
 rename bvd_name name_par
+
+rename entity_id bvdid_par
+rename year_incorp year_incorp_par
 
 * 2-digit NAICS
 gen naics_aff_2 = substr(naics_aff_6, 1, 2)
