@@ -8,8 +8,10 @@ Reads a CSV with columns [name_aff, matched_name] and adds:
   Q2 — confidence score 1-10
 
 Usage:
-  1. Set INPUT_CSV in src/config.py to your file
-  2. Set GEMINI_API_KEY as an environment variable
+  1. Set INPUT_CSV and OUTPUT_CSV below to your file paths
+  2. Set GEMINI_API_KEY as an environment variable:
+       Windows:  set GEMINI_API_KEY=your-key-here
+       Mac/Linux: export GEMINI_API_KEY=your-key-here
   3. Run: python src/gemini_classifier.py
 
 The script saves results after every mini-batch, so if it gets interrupted
@@ -19,24 +21,121 @@ Author: Sebastian Velasquez (IADB)
 """
 
 import os
-import sys
 import pandas as pd
 import numpy as np
 import time
 import google.generativeai as genai
 from concurrent.futures import ThreadPoolExecutor
 
-# Load config and shared utilities
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from config import (GEMINI_API_KEY, GEMINI_MODEL, INPUT_CSV, OUTPUT_CSV,
-                    NUM_SPLITS, MAX_WORKERS, SLEEP_BETWEEN_BATCHES)
-from utils import build_classification_prompt, parse_response
 
-# Set up Gemini
+# ===========================================================================
+# CONFIG — edit these before running
+# ===========================================================================
+
+# API key — loaded from environment variable (never hardcode keys in source)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
+# Model — "gemini-2.0-flash" is fast and cheap
+# Use "gemini-2.5-pro" for higher quality on tricky cases
+GEMINI_MODEL = "gemini-2.0-flash"
+
+# Path to your input CSV (required columns: name_aff, matched_name)
+INPUT_CSV = "examples/sample_pairs.csv"
+
+# Where to save the results
+OUTPUT_CSV = "output/results.csv"
+
+# How many mini-batches to split the CSV into
+# Larger = smaller batches = easier to resume after a failure
+NUM_SPLITS = 100
+
+# Parallel API threads — keep at 2-5 to avoid rate limits
+# Increase if you have a paid plan
+MAX_WORKERS = 3
+
+# Seconds to wait between batches
+SLEEP_BETWEEN_BATCHES = 5.0
+
+
+# ===========================================================================
+# PROMPT
+# ===========================================================================
+
+def build_prompt(name_aff: str, matched_name: str) -> str:
+    """
+    Builds the classification prompt for a single company name pair.
+
+    We ask the model two questions:
+      Q1: Are these the same company or in the same parent group? (Yes / Non)
+      Q2: How confident are you? (1-10)
+
+    Design decisions:
+    - "Non" instead of "No" keeps output consistent with the Stata pipeline downstream.
+    - We tell the model to focus on distinctive tokens — "services", "group",
+      "holdings" should not drive a match; unique tokens like "Petrobras" should.
+    - If uncertain, return Non. False positives are harder to fix in research context.
+    """
+    return f"""
+You are a research assistant who specializes in identifying companies.
+
+I will give you two company names. Your job is to decide whether they refer
+to the same company, or to companies that belong to the same corporate group
+(e.g., a subsidiary and its parent, or two divisions of the same conglomerate).
+
+Always respond in this exact format — nothing else:
+Q1: Yes/Non || Q2: <score from 1 to 10>
+
+Rules:
+- Q1 = "Yes"  if same company or same parent group
+- Q1 = "Non"  if different companies with no ownership connection
+- Q2 = your certainty: 1 (very unsure) to 10 (very sure)
+- If the names are identical after removing punctuation and case, return Yes with Q2 = 10
+- Focus on distinctive words — ignore generic terms like "services", "group",
+  "holdings", "international", "global", "solutions"
+- Count parent-subsidiary ties as Yes (e.g., "YouTube" and "Google" -> Yes)
+- If you're not sure, return Non — it's better to miss a match than to create a false one
+- Accept names in any language (Spanish, English, Portuguese, etc.)
+
+name_aff: {name_aff}
+matched_name: {matched_name}
+""".strip()
+
+
+# ===========================================================================
+# RESPONSE PARSER
+# ===========================================================================
+
+def parse_response(raw_response: str) -> tuple:
+    """
+    Parses the model's response into (Q1, Q2).
+
+    Expected format: "Q1: Yes/Non || Q2: 8"
+
+    Returns (raw_response, "") if the format is unexpected,
+    so unexpected outputs are visible for manual inspection.
+    """
+    if "||" in raw_response:
+        try:
+            parts = raw_response.split("||")
+            q1 = parts[0].replace("Q1:", "").strip()
+            q2 = parts[1].replace("Q2:", "").strip()
+            return q1, q2
+        except Exception:
+            pass
+    return raw_response.strip(), ""
+
+
+# ===========================================================================
+# SETUP
+# ===========================================================================
+
+if not GEMINI_API_KEY:
+    print("WARNING: GEMINI_API_KEY is not set. Set it as an environment variable.")
+
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel(model_name=GEMINI_MODEL)
 
-# Make sure output folder exists (relative to where the script is run from)
+# Create output folder if it doesn't exist
 output_dir = os.path.dirname(OUTPUT_CSV)
 if output_dir:
     os.makedirs(output_dir, exist_ok=True)
@@ -51,7 +150,7 @@ def classify_pair(name_aff: str, matched_name: str) -> tuple:
     Sends one pair to Gemini and returns (Q1, Q2).
     Handles rate limit errors (HTTP 429) by waiting and retrying.
     """
-    prompt = build_classification_prompt(name_aff, matched_name)
+    prompt = build_prompt(name_aff, matched_name)
     while True:
         try:
             response = model.generate_content(prompt)

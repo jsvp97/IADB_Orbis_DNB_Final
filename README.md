@@ -27,7 +27,12 @@ A standalone tool extracted from the pipeline above. If you have a list of fuzzy
 
 You give it a CSV with two columns of company names. It calls Gemini or GPT-4 for each pair and gets back a Yes/No answer and a confidence score. It handles abbreviations, rebrands, cross-language names, and parent–subsidiary relationships — things string similarity algorithms get wrong.
 
-Handles large datasets with rate limit retries and incremental saves so you can resume if something breaks.
+There are two scripts, one per model — pick whichever you have API access to. Each file is self-contained: just set your API key as an environment variable, point it at your CSV, and run it.
+
+- `gemini_classifier.py` — uses Google Gemini (gemini-2.0-flash by default)
+- `gpt4_classifier.py` — uses OpenAI GPT-4 (gpt-4o-mini by default)
+
+Both handle large datasets with rate limit retries and incremental saves so you can resume if something breaks.
 
 → [firm-name-ai-classifier](./firm-name-ai-classifier)
 
